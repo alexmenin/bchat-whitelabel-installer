@@ -15,6 +15,17 @@ sudo chmod +x install-online.sh bchatctl
 sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.5 3388
 ```
 
+Para atualizar uma instalacao existente sem disputar a porta, use:
+
+```bash
+cd /var/www/bchat-whitelabel-installer
+sudo git pull
+sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.5
+```
+
+Esse comando troca somente o container BChat, preserva os volumes e aguarda o
+healthcheck interno. Em caso de falha, restaura o `.env` anterior.
+
 Se o repositorio ja estiver clonado, execute somente:
 
 ```bash
