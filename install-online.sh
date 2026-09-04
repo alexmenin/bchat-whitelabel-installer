@@ -11,7 +11,7 @@ command -v openssl >/dev/null 2>&1 || { echo "OpenSSL nao encontrado." >&2; exit
 command -v curl >/dev/null 2>&1 || { echo "Curl nao encontrado." >&2; exit 1; }
 command -v ss >/dev/null 2>&1 || command -v lsof >/dev/null 2>&1 || { echo "ss ou lsof nao encontrado." >&2; exit 1; }
 
-IMAGE="${1:?Informe a imagem Docker Hub, por exemplo usuario/bchat-whitelabel:1.2.5}"
+IMAGE="${1:?Informe a imagem Docker Hub, por exemplo usuario/bchat-whitelabel:1.2.7}"
 PORT="${2:-8080}"
 [[ "$IMAGE" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
 [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || { echo "Porta invalida." >&2; exit 1; }
@@ -93,3 +93,5 @@ echo
 echo "Endereco do servidor: http://$SERVER_IP:$PORT"
 echo "BChat iniciado em http://$SERVER_IP:$PORT/__bchat"
 echo "Acesse esse endereco para ativar a licenca e configurar marca, dominios, Nginx, HTTPS e integracoes."
+echo "Admin inicial: ${INIT_ADMIN_EMAIL:-admin@empresa.local}"
+echo "Senha inicial: ${INIT_ADMIN_PASSWORD:-admin123} (altere apos o primeiro acesso)"
