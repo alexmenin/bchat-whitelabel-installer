@@ -46,6 +46,9 @@ sudo docker compose ps
 sudo docker compose logs --tail=80 bchat
 ```
 
+Use `sudo docker compose ps -a` para visualizar tambem containers que foram
+encerrados durante a inicializacao.
+
 ## Instalacao offline
 
 1. Instale a imagem `bchat-appliance:<versao>` fornecida pelo vendedor:

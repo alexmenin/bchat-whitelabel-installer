@@ -72,6 +72,14 @@ docker pull "$IMAGE"
 docker compose config >/dev/null
 docker compose up -d
 
+container="$(docker compose ps -q bchat 2>/dev/null || true)"
+if [ -z "$container" ] || [ "$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || true)" != "running" ]; then
+  echo "O container BChat nao permaneceu em execucao." >&2
+  docker compose ps -a >&2 || true
+  docker compose logs --tail=100 bchat >&2 || true
+  exit 1
+fi
+
 echo
 echo "Endereco do servidor: http://$SERVER_IP:$PORT"
 echo "BChat iniciado em http://$SERVER_IP:$PORT/__bchat"
