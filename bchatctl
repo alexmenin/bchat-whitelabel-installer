@@ -64,7 +64,7 @@ NGINX
     certbot --nginx --non-interactive --agree-tos --redirect -d "$domain";;
   update-online)
     need_root; need_env
-    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.5}"
+    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.6}"
     [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
     version="${image##*:}"
     temporary_env="$(mktemp)"

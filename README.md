@@ -20,7 +20,7 @@ Para atualizar uma instalacao existente sem disputar a porta, use:
 ```bash
 cd /var/www/bchat-whitelabel-installer
 sudo git pull
-sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.5
+sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.6
 ```
 
 Esse comando troca somente o container BChat, preserva os volumes e aguarda o
