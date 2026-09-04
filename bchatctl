@@ -4,30 +4,43 @@ PACKAGE_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PACKAGE_DIR"
 need_root() { [ "$(id -u)" -eq 0 ] || { echo "Use sudo para este comando." >&2; exit 1; }; }
 need_env() { [ -f .env ] || { echo "Execute ./install.sh primeiro." >&2; exit 1; }; }
+load_env() {
+  need_env
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+}
 container_id() { docker compose ps -q bchat; }
 configured_domain() {
-  local domain=""
-  if command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-    domain="$(curl -fsS "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" 2>/dev/null | jq -r '.config.domains.app // empty' 2>/dev/null || true)"
-  fi
-  if [ -z "$domain" ]; then
-    domain="$(awk -F= '$1=="BCHAT_PUBLIC_DOMAIN" {print $2}' .env | tr -d '[:space:]')"
+  local domain response endpoint
+  endpoint="http://127.0.0.1:${BCHAT_GATEWAY_PORT}/__bchat/api/status"
+  response="$(curl --fail-with-body -sS --max-time 10 "$endpoint")" || {
+    echo "Nao foi possivel ler o dominio salvo no configurador ($endpoint)." >&2
+    echo "Conclua a configuracao de dominios e tente novamente." >&2
+    return 1
+  }
+  domain="$(printf '%s' "$response" | jq -r '.config.domains.app // empty')"
+  if [ -z "$domain" ] || [ "$domain" = "app.example.com" ] || [ "$domain" = "example.com" ]; then
+    echo "O configurador ainda nao possui um dominio real salvo." >&2
+    echo "Informe o dominio na etapa Dominios antes de publicar." >&2
+    return 1
   fi
   printf '%s' "$domain"
 }
 
 case "${1:-help}" in
   status)
-    need_root; need_env; docker compose ps; curl -fsS "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" || true; echo; ;;
+    need_root; load_env; docker compose ps; curl -fsS "http://127.0.0.1:${BCHAT_GATEWAY_PORT}/__bchat/api/status" || true; echo; ;;
   logs)
     need_env; docker compose logs --tail="${2:-200}" -f bchat;;
   diagnostics)
-    need_root; need_env; curl -fsS -X POST -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/runtime"; echo;;
+    need_root; load_env; curl -fsS -X POST -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:${BCHAT_GATEWAY_PORT}/__bchat/api/runtime"; echo;;
   proxy)
-    need_root; need_env; [ "${2:-}" = install ] || { echo "Uso: sudo ./bchatctl proxy install" >&2; exit 1; }
+    need_root; load_env; [ "${2:-}" = install ] || { echo "Uso: sudo ./bchatctl proxy install" >&2; exit 1; }
     command -v jq >/dev/null 2>&1 || { echo "Instale jq para ler o dominio salvo no configurador." >&2; exit 1; }
     domain="$(configured_domain)"
-    [[ "$domain" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo "Conclua a etapa de dominios no configurador." >&2; exit 1; }
+    [[ "$domain" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo "Dominio invalido no configurador." >&2; exit 1; }
     nginx_file=/etc/nginx/sites-available/bchat-whitelabel.conf
     temporary="$(mktemp)"
     cat > "$temporary" <<NGINX
@@ -53,20 +66,20 @@ NGINX
     mkdir -p /etc/nginx/sites-enabled; ln -sfn "$nginx_file" /etc/nginx/sites-enabled/bchat-whitelabel.conf
     nginx -t; systemctl reload nginx; echo "Proxy instalado para $domain.";;
   tls)
-    need_root; need_env; [ "${2:-}" = enable ] || { echo "Uso: sudo ./bchatctl tls enable" >&2; exit 1; }
+    need_root; load_env; [ "${2:-}" = enable ] || { echo "Uso: sudo ./bchatctl tls enable" >&2; exit 1; }
     command -v certbot >/dev/null 2>&1 || { echo "Certbot nao encontrado." >&2; exit 1; }
     command -v jq >/dev/null 2>&1 || { echo "Instale jq para ler o dominio salvo no configurador." >&2; exit 1; }
     domain="$(configured_domain)"
     [[ "$domain" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo "Conclua a etapa de dominios no configurador." >&2; exit 1; }
     certbot --nginx --non-interactive --agree-tos --redirect -d "$domain";;
   publish)
-    need_root; need_env
+    need_root; load_env
     "$0" proxy install
     "$0" tls enable
     echo "Publicacao concluida com Nginx e HTTPS.";;
   update-online)
-    need_root; need_env
-    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.2.1}"
+    need_root; load_env
+    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.2.2}"
     [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
     version="${image##*:}"
     temporary_env="$(mktemp)"
@@ -100,7 +113,7 @@ NGINX
     rm -f "$backup_env"
     echo "Atualizacao $version concluida sem conflito de porta.";;
   update)
-    need_root; need_env
+    need_root; load_env
     command -v jq >/dev/null 2>&1 || { echo "Instale jq para validar atualizacoes." >&2; exit 1; }
     command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum nao encontrado." >&2; exit 1; }
     command -v openssl >/dev/null 2>&1 || { echo "openssl nao encontrado." >&2; exit 1; }
@@ -148,7 +161,7 @@ NGINX
     rm -f "$backup_env"
     echo "Atualizacao $version instalada mantendo os volumes persistentes.";;
   backup)
-    need_root; need_env; target="${2:-./backup-$(date +%Y%m%d-%H%M%S)}"; mkdir -p "$target"
+    need_root; load_env; target="${2:-./backup-$(date +%Y%m%d-%H%M%S)}"; mkdir -p "$target"
     docker run --rm -v bchat-whitelabel_bchat_data:/source:ro -v "$(readlink -f "$target"):/backup" alpine sh -c 'tar czf /backup/bchat-data.tgz -C /source .'
     cp .env "$target/env.backup"; chmod 600 "$target/env.backup"; echo "Backup criado em $target";;
   *)
