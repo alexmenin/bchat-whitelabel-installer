@@ -62,6 +62,10 @@ replace_value APP_BASE_URL "http://$SERVER_IP:$PORT"
 replace_value SIP_DOMAIN "$SERVER_IP"
 replace_value BCHAT_GATEWAY_PORT "$PORT"
 replace_value BCHAT_BIND_ADDRESS "0.0.0.0"
+current_rtp_end="$(awk -F= '$1=="ASTERISK_RTP_END" {print substr($0,index($0,"=")+1)}' .env)"
+if [ -z "$current_rtp_end" ] || [ "$current_rtp_end" = "20000" ]; then
+  replace_value ASTERISK_RTP_END "10100"
+fi
 for key in DB_PASS POSTGRES_PASSWORD REDIS_PASSWORD JWT_SECRET JWT_REFRESH_SECRET MASTER_KEY SEAWEEDFS_SECRET_KEY ASTERISK_AMI_SECRET; do
   current="$(awk -F= -v key="$key" '$1==key {print substr($0,index($0,"=")+1)}' .env)"
   [ -n "$current" ] && [ "$current" != GENERATE_ME ] || replace_value "$key" "$(random_secret)"

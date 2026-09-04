@@ -33,6 +33,10 @@ O instalador verifica se a porta escolhida esta livre antes de baixar a imagem
 ou subir o container. Se ela estiver ocupada, ele informa o processo e encerra
 sem alterar a instalacao. Para continuar, escolha outra porta:
 
+A versao `1.1.2` tambem reduz a faixa RTP padrao para `10000-10100`, evitando
+que o Docker tente publicar milhares de portas. Uma faixa personalizada no
+`.env` e preservada.
+
 ```bash
 sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
 ```
