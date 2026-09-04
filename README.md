@@ -12,7 +12,7 @@ cd /var/www
 git clone --depth 1 https://github.com/alexmenin/bchat-whitelabel-installer.git bchat-whitelabel-installer
 cd bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.7 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.8 3388
 ```
 
 Para atualizar uma instalacao existente sem disputar a porta, use:
@@ -20,7 +20,7 @@ Para atualizar uma instalacao existente sem disputar a porta, use:
 ```bash
 cd /var/www/bchat-whitelabel-installer
 sudo git pull
-sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.7
+sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.8
 ```
 
 Esse comando troca somente o container BChat, preserva os volumes e aguarda o
@@ -56,21 +56,22 @@ O instalador verifica se a porta escolhida esta livre antes de baixar a imagem
 ou subir o container. Se ela estiver ocupada, ele informa o processo e encerra
 sem alterar a instalacao. Para continuar, escolha outra porta:
 
-A versao `1.1.7` inclui a recuperacao explicita da sessao do configurador,
+A versao `1.1.8` bloqueia a ativacao ate validar o setup-code e inclui a
+recuperacao explicita da sessao do configurador,
 o binario FFmpeg exigido pelo backend e mantem a faixa RTP padrao em
 `10000-10100`, evitando
 que o Docker tente publicar milhares de portas. Uma faixa personalizada no
 `.env` e preservada.
 
 ```bash
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.7 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.8 3388
 ```
 
 Se uma tentativa anterior ja criou o projeto, entre na pasta e execute:
 
 ```bash
 cd /var/www/bchat-whitelabel-installer
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.7 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.8 3388
 sudo docker compose ps
 sudo docker compose logs --tail=80 bchat
 ```
