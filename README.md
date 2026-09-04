@@ -5,15 +5,28 @@ nao contem o codigo-fonte do produto.
 
 ## Instalacao online (Docker Hub)
 
-Com o script deste pacote e a imagem publicada pelo fornecedor:
+Execute este bloco no servidor para baixar o instalador e iniciar o BChat:
 
 ```bash
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 8080
+cd /var/www
+git clone --depth 1 https://github.com/alexmenin/bchat-whitelabel-installer.git bchat-whitelabel-installer
+cd bchat-whitelabel-installer
+sudo chmod +x install-online.sh bchatctl
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 8888
+```
+
+Se o repositorio ja estiver clonado, execute somente:
+
+```bash
+cd /var/www/bchat-whitelabel-installer
+sudo chmod +x install-online.sh bchatctl
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 8888
 ```
 
 O comando faz o pull da imagem, cria os segredos locais, sobe os volumes
 persistentes e deixa o configurador em `http://IP_DO_SERVIDOR:8080/__bchat`.
-O segundo argumento e somente a porta publica escolhida. O dominio e definido
+O segundo argumento e somente a porta publica escolhida, neste exemplo `8888`.
+O dominio e definido
 depois, dentro do configurador visual.
 
 ## Instalacao offline
