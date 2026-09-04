@@ -94,7 +94,7 @@ NGINX
     echo "Trocando somente o container BChat; volumes serao preservados."
     docker compose stop bchat >/dev/null 2>&1 || true
     docker compose rm -f bchat >/dev/null 2>&1 || true
-    docker compose up -d --no-deps bchat
+    docker compose up -d --force-recreate --no-deps bchat
     container="$(container_id)"
     healthy=0
     for _ in $(seq 1 60); do
@@ -107,6 +107,16 @@ NGINX
       docker compose stop bchat >/dev/null 2>&1 || true
       docker compose rm -f bchat >/dev/null 2>&1 || true
       docker compose up -d --no-deps bchat
+      echo "A versao anterior foi restaurada. Os volumes nao foram alterados." >&2
+      exit 1
+    fi
+    actual_version="$(curl --fail-with-body -sS --max-time 10 "http://127.0.0.1:${BCHAT_GATEWAY_PORT}/__bchat/api/bootstrap" | jq -r '.version // empty' || true)"
+    if [ "$actual_version" != "$version" ]; then
+      echo "A imagem iniciada nao corresponde a versao solicitada ($actual_version != $version)." >&2
+      cp "$backup_env" .env
+      docker compose stop bchat >/dev/null 2>&1 || true
+      docker compose rm -f bchat >/dev/null 2>&1 || true
+      docker compose up -d --force-recreate --no-deps bchat
       echo "A versao anterior foi restaurada. Os volumes nao foram alterados." >&2
       exit 1
     fi
