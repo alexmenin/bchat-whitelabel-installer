@@ -20,6 +20,12 @@ configured_domain() {
 case "${1:-help}" in
   setup-code)
     need_root; need_env; id="$(container_id)"; [ -n "$id" ] || { echo "Container parado." >&2; exit 1; }; docker exec "$id" sh -c 'cat /var/lib/bchat/config/setup-token';;
+  reset-setup-code)
+    need_root; need_env; id="$(container_id)"; [ -n "$id" ] || { echo "Container parado." >&2; exit 1; }
+    token="$(openssl rand -hex 24)"
+    printf '%s\n' "$token" | docker exec -i "$id" sh -c 'cat > /var/lib/bchat/config/setup-token && chmod 600 /var/lib/bchat/config/setup-token'
+    echo "Novo codigo de configuracao:"
+    echo "$token";;
   status)
     need_root; need_env; docker compose ps; curl -fsS -H "Authorization: Bearer $(setup_token)" "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" || true; echo; ;;
   logs)
@@ -64,7 +70,7 @@ NGINX
     certbot --nginx --non-interactive --agree-tos --redirect -d "$domain";;
   update-online)
     need_root; need_env
-    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.6}"
+    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.7}"
     [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
     version="${image##*:}"
     temporary_env="$(mktemp)"
@@ -153,6 +159,7 @@ NGINX
     cat <<'HELP'
 Uso: sudo ./bchatctl <comando>
   setup-code       codigo temporario do configurador
+  reset-setup-code gera um novo codigo sem apagar dados
   status           estado do container
   logs [linhas]    logs do appliance
   diagnostics      componentes internos
