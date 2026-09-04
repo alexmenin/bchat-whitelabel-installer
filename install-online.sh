@@ -24,7 +24,14 @@ port_listener() {
   fi
 }
 
-if listener="$(port_listener)"; then
+same_project_port() {
+  local container
+  container="$(docker compose ps -q bchat 2>/dev/null || true)"
+  [ -n "$container" ] || return 1
+  docker port "$container" 2>/dev/null | grep -Eq "(^|:)${PORT}->"
+}
+
+if listener="$(port_listener)" && ! same_project_port; then
   echo "A porta $PORT ja esta em uso:" >&2
   echo "$listener" >&2
   echo "Escolha outra porta, por exemplo: sudo ./install-online.sh $IMAGE 3388" >&2
