@@ -9,11 +9,27 @@ command -v docker >/dev/null 2>&1 || { echo "Docker nao encontrado." >&2; exit 1
 docker compose version >/dev/null 2>&1 || { echo "Docker Compose v2 nao encontrado." >&2; exit 1; }
 command -v openssl >/dev/null 2>&1 || { echo "OpenSSL nao encontrado." >&2; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "Curl nao encontrado." >&2; exit 1; }
+command -v ss >/dev/null 2>&1 || command -v lsof >/dev/null 2>&1 || { echo "ss ou lsof nao encontrado." >&2; exit 1; }
 
 IMAGE="${1:?Informe a imagem Docker Hub, por exemplo usuario/bchat-whitelabel:1.1.0}"
 PORT="${2:-8080}"
 [[ "$IMAGE" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
 [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || { echo "Porta invalida." >&2; exit 1; }
+
+port_listener() {
+  if command -v ss >/dev/null 2>&1; then
+    ss -H -ltn 2>/dev/null | awk -v port=":$PORT" '$4 ~ (port "$") { print; found=1 } END { exit !found }'
+  else
+    lsof -nP -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null
+  fi
+}
+
+if listener="$(port_listener)"; then
+  echo "A porta $PORT ja esta em uso:" >&2
+  echo "$listener" >&2
+  echo "Escolha outra porta, por exemplo: sudo ./install-online.sh $IMAGE 3388" >&2
+  exit 1
+fi
 
 SERVER_IP="${BCHAT_SERVER_IP:-}"
 if [ -z "$SERVER_IP" ]; then

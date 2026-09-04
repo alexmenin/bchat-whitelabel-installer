@@ -29,6 +29,23 @@ O segundo argumento e somente a porta publica escolhida, neste exemplo `8888`.
 O dominio e definido
 depois, dentro do configurador visual.
 
+O instalador verifica se a porta escolhida esta livre antes de baixar a imagem
+ou subir o container. Se ela estiver ocupada, ele informa o processo e encerra
+sem alterar a instalacao. Para continuar, escolha outra porta:
+
+```bash
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 3388
+```
+
+Se uma tentativa anterior ja criou o projeto, entre na pasta e execute:
+
+```bash
+cd /var/www/bchat-whitelabel-installer
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 3388
+sudo docker compose ps
+sudo docker compose logs --tail=80 bchat
+```
+
 ## Instalacao offline
 
 1. Instale a imagem `bchat-appliance:<versao>` fornecida pelo vendedor:
