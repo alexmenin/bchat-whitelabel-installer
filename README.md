@@ -12,7 +12,7 @@ cd /var/www
 git clone --depth 1 https://github.com/alexmenin/bchat-whitelabel-installer.git bchat-whitelabel-installer
 cd bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.8 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.9 3388
 ```
 
 Para atualizar uma instalacao existente sem disputar a porta, use:
@@ -20,29 +20,18 @@ Para atualizar uma instalacao existente sem disputar a porta, use:
 ```bash
 cd /var/www/bchat-whitelabel-installer
 sudo git pull
-sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.8
+sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.9
 ```
 
 Esse comando troca somente o container BChat, preserva os volumes e aguarda o
 healthcheck interno. Em caso de falha, restaura o `.env` anterior.
-
-Se o configurador informar que a sessao expirou, execute `sudo ./bchatctl
-setup-code` e clique em `Validar codigo novamente` na tela. Isso nao exige
-apagar volumes nem reinstalar o sistema.
-
-Se o codigo continuar sendo recusado, gere um novo codigo diretamente no
-volume persistente:
-
-```bash
-sudo ./bchatctl reset-setup-code
-```
 
 Se o repositorio ja estiver clonado, execute somente:
 
 ```bash
 cd /var/www/bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.6 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.9 3388
 ```
 
 O comando faz o pull da imagem, cria os segredos locais, sobe os volumes
@@ -56,22 +45,22 @@ O instalador verifica se a porta escolhida esta livre antes de baixar a imagem
 ou subir o container. Se ela estiver ocupada, ele informa o processo e encerra
 sem alterar a instalacao. Para continuar, escolha outra porta:
 
-A versao `1.1.8` bloqueia a ativacao ate validar o setup-code e inclui a
-recuperacao explicita da sessao do configurador,
+A versao `1.1.9` remove o codigo de setup e libera o fluxo diretamente pela
+ativacao da licenca,
 o binario FFmpeg exigido pelo backend e mantem a faixa RTP padrao em
 `10000-10100`, evitando
 que o Docker tente publicar milhares de portas. Uma faixa personalizada no
 `.env` e preservada.
 
 ```bash
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.8 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.9 3388
 ```
 
 Se uma tentativa anterior ja criou o projeto, entre na pasta e execute:
 
 ```bash
 cd /var/www/bchat-whitelabel-installer
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.8 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.9 3388
 sudo docker compose ps
 sudo docker compose logs --tail=80 bchat
 ```
@@ -93,13 +82,7 @@ docker load -i bchat-appliance-1.0.0.tar
 sudo ./install.sh
 ```
 
-3. Consulte o codigo temporario e abra o configurador local:
-
-```bash
-sudo ./bchatctl setup-code
-```
-
-Abra `http://127.0.0.1:8080/__bchat` no servidor ou use um tunel SSH. Ative a
+3. Abra `http://127.0.0.1:8080/__bchat` no servidor ou use um tunel SSH. Ative a
 licenca, informe a marca e os dominios. O sistema nao libera a aplicacao antes
 da validacao da licenca.
 
@@ -128,7 +111,7 @@ sudo ./bchatctl backup ./backup
 Nao remova os volumes Docker: `bchat_data`, `bchat_sessions`, `bchat_public`,
 `bchat_temp` e `bchat_reports` contem dados da instalacao.
 
-## Limite de protecao do codigo
+## Protecao da instalacao
 
 O cliente recebe uma imagem sem fontes TypeScript/Dart e sem source maps. Como o
 frontend executa no navegador, parte do JavaScript necessariamente pode ser

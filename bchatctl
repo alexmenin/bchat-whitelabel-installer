@@ -5,11 +5,10 @@ cd "$PACKAGE_DIR"
 need_root() { [ "$(id -u)" -eq 0 ] || { echo "Use sudo para este comando." >&2; exit 1; }; }
 need_env() { [ -f .env ] || { echo "Execute ./install.sh primeiro." >&2; exit 1; }; }
 container_id() { docker compose ps -q bchat; }
-setup_token() { docker exec "$(container_id)" sh -c 'cat /var/lib/bchat/config/setup-token'; }
 configured_domain() {
   local domain=""
   if command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-    domain="$(curl -fsS -H "Authorization: Bearer $(setup_token)" "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" 2>/dev/null | jq -r '.config.domains.app // empty' 2>/dev/null || true)"
+    domain="$(curl -fsS "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" 2>/dev/null | jq -r '.config.domains.app // empty' 2>/dev/null || true)"
   fi
   if [ -z "$domain" ]; then
     domain="$(awk -F= '$1=="BCHAT_PUBLIC_DOMAIN" {print $2}' .env | tr -d '[:space:]')"
@@ -18,20 +17,12 @@ configured_domain() {
 }
 
 case "${1:-help}" in
-  setup-code)
-    need_root; need_env; id="$(container_id)"; [ -n "$id" ] || { echo "Container parado." >&2; exit 1; }; docker exec "$id" sh -c 'cat /var/lib/bchat/config/setup-token';;
-  reset-setup-code)
-    need_root; need_env; id="$(container_id)"; [ -n "$id" ] || { echo "Container parado." >&2; exit 1; }
-    token="$(openssl rand -hex 24)"
-    printf '%s\n' "$token" | docker exec -i "$id" sh -c 'cat > /var/lib/bchat/config/setup-token && chmod 600 /var/lib/bchat/config/setup-token'
-    echo "Novo codigo de configuracao:"
-    echo "$token";;
   status)
-    need_root; need_env; docker compose ps; curl -fsS -H "Authorization: Bearer $(setup_token)" "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" || true; echo; ;;
+    need_root; need_env; docker compose ps; curl -fsS "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" || true; echo; ;;
   logs)
     need_env; docker compose logs --tail="${2:-200}" -f bchat;;
   diagnostics)
-    need_root; need_env; curl -fsS -X POST -H "Authorization: Bearer $(setup_token)" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/runtime"; echo;;
+    need_root; need_env; curl -fsS -X POST -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/runtime"; echo;;
   proxy)
     need_root; need_env; [ "${2:-}" = install ] || { echo "Uso: sudo ./bchatctl proxy install" >&2; exit 1; }
     command -v jq >/dev/null 2>&1 || { echo "Instale jq para ler o dominio salvo no configurador." >&2; exit 1; }
@@ -70,7 +61,7 @@ NGINX
     certbot --nginx --non-interactive --agree-tos --redirect -d "$domain";;
   update-online)
     need_root; need_env
-    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.8}"
+    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.9}"
     [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
     version="${image##*:}"
     temporary_env="$(mktemp)"
@@ -111,7 +102,7 @@ NGINX
     response_file="$(mktemp)"
     artifact_file="$(mktemp --suffix=.tar)"
     trap 'rm -f "$response_file" "$artifact_file"' EXIT
-    curl --fail-with-body -sS -H "Authorization: Bearer $(setup_token)" "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/update/latest" > "$response_file"
+    curl --fail-with-body -sS "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/update/latest" > "$response_file"
     available="$(jq -r '.updateAvailable // false' "$response_file")"
     if [ "$available" != true ]; then echo "BChat ja esta na versao mais recente."; exit 0; fi
     version="$(jq -r '.release.version' "$response_file")"
@@ -158,8 +149,6 @@ NGINX
   *)
     cat <<'HELP'
 Uso: sudo ./bchatctl <comando>
-  setup-code       codigo temporario do configurador
-  reset-setup-code gera um novo codigo sem apagar dados
   status           estado do container
   logs [linhas]    logs do appliance
   diagnostics      componentes internos
