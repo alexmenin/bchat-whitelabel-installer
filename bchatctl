@@ -12,6 +12,26 @@ load_env() {
   set +a
 }
 container_id() { docker compose ps -q bchat; }
+wait_container_running() {
+  local container="$1" state
+  for _ in $(seq 1 30); do
+    state="$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
+    [ "$state" = running ] && return 0
+    sleep 1
+  done
+  echo "O Docker nao iniciou o container (estado: ${state:-desconhecido})." >&2
+  docker inspect --format 'Erro do Docker: {{.State.Error}}' "$container" >&2 2>/dev/null || true
+  docker compose ps -a >&2 || true
+  docker compose logs --tail=120 bchat >&2 || true
+  return 1
+}
+start_container_or_fail() {
+  local container
+  docker compose up -d --force-recreate --no-deps bchat
+  container="$(container_id)"
+  [ -n "$container" ] || { echo "O Docker nao criou o container BChat." >&2; return 1; }
+  wait_container_running "$container"
+}
 configured_domain() {
   local domain response endpoint
   endpoint="http://127.0.0.1:${BCHAT_GATEWAY_PORT}/__bchat/api/status"
@@ -79,7 +99,7 @@ NGINX
     echo "Publicacao concluida com Nginx e HTTPS.";;
   update-online)
     need_root; load_env
-    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.2.7}"
+    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.2.8}"
     [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
     version="${image##*:}"
     temporary_env="$(mktemp)"
@@ -94,7 +114,15 @@ NGINX
     echo "Trocando somente o container BChat; volumes serao preservados."
     docker compose stop bchat >/dev/null 2>&1 || true
     docker compose rm -f bchat >/dev/null 2>&1 || true
-    docker compose up -d --force-recreate --no-deps bchat
+    if ! start_container_or_fail; then
+      echo "A nova versao nao iniciou; restaurando a versao anterior." >&2
+      cp "$backup_env" .env
+      docker compose stop bchat >/dev/null 2>&1 || true
+      docker compose rm -sf bchat >/dev/null 2>&1 || true
+      start_container_or_fail || true
+      echo "A versao anterior foi restaurada. Os volumes nao foram alterados." >&2
+      exit 1
+    fi
     container="$(container_id)"
     healthy=0
     for _ in $(seq 1 60); do
@@ -106,7 +134,7 @@ NGINX
       cp "$backup_env" .env
       docker compose stop bchat >/dev/null 2>&1 || true
       docker compose rm -f bchat >/dev/null 2>&1 || true
-      docker compose up -d --no-deps bchat
+      start_container_or_fail || true
       echo "A versao anterior foi restaurada. Os volumes nao foram alterados." >&2
       exit 1
     fi
@@ -116,7 +144,7 @@ NGINX
       cp "$backup_env" .env
       docker compose stop bchat >/dev/null 2>&1 || true
       docker compose rm -f bchat >/dev/null 2>&1 || true
-      docker compose up -d --force-recreate --no-deps bchat
+      start_container_or_fail || true
       echo "A versao anterior foi restaurada. Os volumes nao foram alterados." >&2
       exit 1
     fi
@@ -156,7 +184,14 @@ NGINX
     awk -v version="$version" -v image="bchat-appliance:"version 'index($0,"BCHAT_VERSION=")==1 {$0="BCHAT_VERSION=" version} index($0,"BCHAT_IMAGE=")==1 {$0="BCHAT_IMAGE=" image} {print}' .env > "$temporary_env"
     install -m 600 "$temporary_env" .env
     rm -f "$temporary_env"
-    docker compose up -d
+    if ! start_container_or_fail; then
+      echo "A nova versao nao iniciou; restaurando a versao anterior." >&2
+      cp "$backup_env" .env
+      docker compose stop bchat >/dev/null 2>&1 || true
+      docker compose rm -sf bchat >/dev/null 2>&1 || true
+      start_container_or_fail || true
+      exit 1
+    fi
     healthy=0
     for _ in $(seq 1 60); do
       if docker inspect --format '{{.State.Health.Status}}' "$(container_id)" 2>/dev/null | grep -q healthy; then healthy=1; break; fi
@@ -165,7 +200,7 @@ NGINX
     if [ "$healthy" != 1 ]; then
       echo "Novo container nao ficou saudavel; restaurando a versao anterior." >&2
       cp "$backup_env" .env
-      docker compose up -d
+      start_container_or_fail || true
       exit 1
     fi
     rm -f "$backup_env"
