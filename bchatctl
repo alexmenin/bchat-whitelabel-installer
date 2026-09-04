@@ -79,7 +79,7 @@ NGINX
     echo "Publicacao concluida com Nginx e HTTPS.";;
   update-online)
     need_root; load_env
-    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.2.2}"
+    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.2.3}"
     [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
     version="${image##*:}"
     temporary_env="$(mktemp)"
