@@ -40,3 +40,5 @@ fi
 docker compose up -d
 echo "BChat iniciado. Acesse o configurador para ativar a licenca."
 echo "Configurador local: http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat"
+echo "Admin inicial: ${INIT_ADMIN_EMAIL:-admin@empresa.local}"
+echo "Senha inicial: ${INIT_ADMIN_PASSWORD:-admin123} (altere apos o primeiro acesso)"
