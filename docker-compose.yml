@@ -1,0 +1,65 @@
+name: bchat-whitelabel
+
+services:
+  bchat:
+    image: ${BCHAT_IMAGE:-bchat-appliance:1.1.0}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_PORT: 8080
+      APP_BASE_URL: ${APP_BASE_URL:-http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}}
+      BCHAT_DATA_ROOT: /var/lib/bchat
+      SETUP_PORT: 9010
+      BCHAT_LICENSE_SERVER: ${BCHAT_LICENSE_SERVER:?Configure BCHAT_LICENSE_SERVER}
+      BCHAT_VERSION: ${BCHAT_VERSION:-1.1.0}
+      BCHAT_UPDATE_CHANNEL: ${BCHAT_UPDATE_CHANNEL:-stable}
+      LICENSE_OFFLINE_GRACE_SECONDS: ${LICENSE_OFFLINE_GRACE_SECONDS:-604800}
+      LICENSE_PUBLIC_KEY_PATH: /opt/bchat/keys/lease-public.pem
+      DB_PASS: ${DB_PASS:?Run ./install.sh first}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run ./install.sh first}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run ./install.sh first}
+      JWT_SECRET: ${JWT_SECRET:?Run ./install.sh first}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Run ./install.sh first}
+      MASTER_KEY: ${MASTER_KEY:?Run ./install.sh first}
+      SEAWEEDFS_SECRET_KEY: ${SEAWEEDFS_SECRET_KEY:?Run ./install.sh first}
+      ASTERISK_AMI_SECRET: ${ASTERISK_AMI_SECRET:?Run ./install.sh first}
+      SIP_DOMAIN: ${SIP_DOMAIN:-localhost}
+      ASTERISK_PUBLIC_IP: ${ASTERISK_PUBLIC_IP:-127.0.0.1}
+      ASTERISK_LOCAL_NET: ${ASTERISK_LOCAL_NET:-172.16.0.0/12}
+      ASTERISK_RTP_START: ${ASTERISK_RTP_START:-10000}
+      ASTERISK_RTP_END: ${ASTERISK_RTP_END:-20000}
+    ports:
+      - ${BCHAT_BIND_ADDRESS:-127.0.0.1}:${BCHAT_GATEWAY_PORT:-8080}:80
+      - ${ASTERISK_SIP_BIND:-0.0.0.0}:${ASTERISK_SIP_UDP_PORT:-5060}:5060/udp
+      - ${ASTERISK_RTP_BIND:-0.0.0.0}:${ASTERISK_RTP_START:-10000}-${ASTERISK_RTP_END:-20000}:${ASTERISK_RTP_START:-10000}-${ASTERISK_RTP_END:-20000}/udp
+    volumes:
+      - bchat_data:/var/lib/bchat
+      - bchat_public:/opt/bchat/backend/public
+      - bchat_temp:/opt/bchat/backend/temp
+      - bchat_sessions:/opt/bchat/backend/.wwebjs_auth
+      - bchat_reports:/opt/bchat/backend/storage/dashboard-reports
+      - ./secrets/firebase:/run/secrets/firebase:ro
+      - ./runtime/asterisk-sounds:/var/lib/asterisk/sounds
+    security_opt:
+      - no-new-privileges:true
+    cap_add:
+      - NET_BIND_SERVICE
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:80/health || curl -fsS http://127.0.0.1:80/__bchat/api/status"]
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  bchat_data:
+  bchat_public:
+  bchat_temp:
+  bchat_sessions:
+  bchat_reports:

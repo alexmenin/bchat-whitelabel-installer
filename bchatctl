@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+PACKAGE_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PACKAGE_DIR"
+need_root() { [ "$(id -u)" -eq 0 ] || { echo "Use sudo para este comando." >&2; exit 1; }; }
+need_env() { [ -f .env ] || { echo "Execute ./install.sh primeiro." >&2; exit 1; }; }
+container_id() { docker compose ps -q bchat; }
+setup_token() { docker exec "$(container_id)" sh -c 'cat /var/lib/bchat/config/setup-token'; }
+configured_domain() {
+  local domain=""
+  if command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    domain="$(curl -fsS -H "Authorization: Bearer $(setup_token)" "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" 2>/dev/null | jq -r '.config.domains.app // empty' 2>/dev/null || true)"
+  fi
+  if [ -z "$domain" ]; then
+    domain="$(awk -F= '$1=="BCHAT_PUBLIC_DOMAIN" {print $2}' .env | tr -d '[:space:]')"
+  fi
+  printf '%s' "$domain"
+}
+
+case "${1:-help}" in
+  setup-code)
+    need_root; need_env; id="$(container_id)"; [ -n "$id" ] || { echo "Container parado." >&2; exit 1; }; docker exec "$id" sh -c 'cat /var/lib/bchat/config/setup-token';;
+  status)
+    need_root; need_env; docker compose ps; curl -fsS -H "Authorization: Bearer $(setup_token)" "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/status" || true; echo; ;;
+  logs)
+    need_env; docker compose logs --tail="${2:-200}" -f bchat;;
+  diagnostics)
+    need_root; need_env; curl -fsS -X POST -H "Authorization: Bearer $(setup_token)" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/runtime"; echo;;
+  proxy)
+    need_root; need_env; [ "${2:-}" = install ] || { echo "Uso: sudo ./bchatctl proxy install" >&2; exit 1; }
+    command -v jq >/dev/null 2>&1 || { echo "Instale jq para ler o dominio salvo no configurador." >&2; exit 1; }
+    domain="$(configured_domain)"
+    [[ "$domain" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo "Conclua a etapa de dominios no configurador." >&2; exit 1; }
+    nginx_file=/etc/nginx/sites-available/bchat-whitelabel.conf
+    temporary="$(mktemp)"
+    cat > "$temporary" <<NGINX
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $domain;
+    client_max_body_size 150m;
+    location / {
+        proxy_pass http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 600s;
+    }
+}
+NGINX
+    install -D -m 644 "$temporary" "$nginx_file"; rm -f "$temporary"
+    mkdir -p /etc/nginx/sites-enabled; ln -sfn "$nginx_file" /etc/nginx/sites-enabled/bchat-whitelabel.conf
+    nginx -t; systemctl reload nginx; echo "Proxy instalado para $domain.";;
+  tls)
+    need_root; need_env; [ "${2:-}" = enable ] || { echo "Uso: sudo ./bchatctl tls enable" >&2; exit 1; }
+    command -v certbot >/dev/null 2>&1 || { echo "Certbot nao encontrado." >&2; exit 1; }
+    command -v jq >/dev/null 2>&1 || { echo "Instale jq para ler o dominio salvo no configurador." >&2; exit 1; }
+    domain="$(configured_domain)"
+    [[ "$domain" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo "Conclua a etapa de dominios no configurador." >&2; exit 1; }
+    certbot --nginx --non-interactive --agree-tos --redirect -d "$domain";;
+  update)
+    need_root; need_env
+    command -v jq >/dev/null 2>&1 || { echo "Instale jq para validar atualizacoes." >&2; exit 1; }
+    command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum nao encontrado." >&2; exit 1; }
+    command -v openssl >/dev/null 2>&1 || { echo "openssl nao encontrado." >&2; exit 1; }
+    response_file="$(mktemp)"
+    artifact_file="$(mktemp --suffix=.tar)"
+    trap 'rm -f "$response_file" "$artifact_file"' EXIT
+    curl --fail-with-body -sS -H "Authorization: Bearer $(setup_token)" "http://127.0.0.1:${BCHAT_GATEWAY_PORT:-8080}/__bchat/api/update/latest" > "$response_file"
+    available="$(jq -r '.updateAvailable // false' "$response_file")"
+    if [ "$available" != true ]; then echo "BChat ja esta na versao mais recente."; exit 0; fi
+    version="$(jq -r '.release.version' "$response_file")"
+    filename="$(jq -r '.release.filename' "$response_file")"
+    expected_sha="$(jq -r '.release.sha256' "$response_file")"
+    signature="$(jq -r '.release.signature' "$response_file")"
+    size="$(jq -r '.release.size' "$response_file")"
+    url="$(jq -r '.downloadUrl' "$response_file")"
+    channel="$(jq -r '.channel' "$response_file")"
+    echo "Baixando BChat $version ($channel)..."
+    curl --fail --location --retry 3 --connect-timeout 15 --max-time 1800 -sS "$url" -o "$artifact_file"
+    actual_sha="$(sha256sum "$artifact_file" | awk '{print $1}')"
+    [ "$actual_sha" = "$expected_sha" ] || { echo "Falha: SHA-256 do artefato nao confere." >&2; exit 1; }
+    actual_size="$(stat -c '%s' "$artifact_file")"
+    [ "$actual_size" = "$size" ] || { echo "Falha: tamanho do artefato nao confere." >&2; exit 1; }
+    printf '%s\n' "$version" "$channel" "$filename" "$expected_sha" "$size" > "${artifact_file}.manifest"
+    printf '%s' "$signature" | base64 -d > "${artifact_file}.signature"
+    openssl pkeyutl -verify -pubin -inkey LICENSE-PUBLIC.pem -rawin -in "${artifact_file}.manifest" -sigfile "${artifact_file}.signature" >/dev/null || { echo "Falha: assinatura da versao invalida." >&2; exit 1; }
+    docker load -i "$artifact_file"
+    backup_env=".env.before-update.$(date +%s)"
+    cp .env "$backup_env"
+    temporary_env="$(mktemp)"
+    awk -v version="$version" -v image="bchat-appliance:"version 'index($0,"BCHAT_VERSION=")==1 {$0="BCHAT_VERSION=" version} index($0,"BCHAT_IMAGE=")==1 {$0="BCHAT_IMAGE=" image} {print}' .env > "$temporary_env"
+    install -m 600 "$temporary_env" .env
+    rm -f "$temporary_env"
+    docker compose up -d
+    healthy=0
+    for _ in $(seq 1 60); do
+      if docker inspect --format '{{.State.Health.Status}}' "$(container_id)" 2>/dev/null | grep -q healthy; then healthy=1; break; fi
+      sleep 5
+    done
+    if [ "$healthy" != 1 ]; then
+      echo "Novo container nao ficou saudavel; restaurando a versao anterior." >&2
+      cp "$backup_env" .env
+      docker compose up -d
+      exit 1
+    fi
+    rm -f "$backup_env"
+    echo "Atualizacao $version instalada mantendo os volumes persistentes.";;
+  backup)
+    need_root; need_env; target="${2:-./backup-$(date +%Y%m%d-%H%M%S)}"; mkdir -p "$target"
+    docker run --rm -v bchat-whitelabel_bchat_data:/source:ro -v "$(readlink -f "$target"):/backup" alpine sh -c 'tar czf /backup/bchat-data.tgz -C /source .'
+    cp .env "$target/env.backup"; chmod 600 "$target/env.backup"; echo "Backup criado em $target";;
+  *)
+    cat <<'HELP'
+Uso: sudo ./bchatctl <comando>
+  setup-code       codigo temporario do configurador
+  status           estado do container
+  logs [linhas]    logs do appliance
+  diagnostics      componentes internos
+  proxy install    instala o proxy Nginx
+  tls enable       emite HTTPS com certbot --nginx
+  update           consulta atualizacao assinada
+  backup [pasta]   salva volume e ambiente
+HELP
+    ;;
+esac

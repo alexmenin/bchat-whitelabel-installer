@@ -1,0 +1,7 @@
+.env
+.env.backup.*
+secrets/*
+!secrets/firebase/.gitkeep
+runtime/asterisk-sounds/*
+!runtime/asterisk-sounds/.gitkeep
+*.log
