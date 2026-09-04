@@ -59,9 +59,14 @@ NGINX
     domain="$(configured_domain)"
     [[ "$domain" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo "Conclua a etapa de dominios no configurador." >&2; exit 1; }
     certbot --nginx --non-interactive --agree-tos --redirect -d "$domain";;
+  publish)
+    need_root; need_env
+    "$0" proxy install
+    "$0" tls enable
+    echo "Publicacao concluida com Nginx e HTTPS.";;
   update-online)
     need_root; need_env
-    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.2.0}"
+    image="${2:?Uso: sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.2.1}"
     [[ "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
     version="${image##*:}"
     temporary_env="$(mktemp)"
@@ -154,6 +159,7 @@ Uso: sudo ./bchatctl <comando>
   diagnostics      componentes internos
   proxy install    instala o proxy Nginx
   tls enable       emite HTTPS com certbot --nginx
+  publish           instala Nginx e emite HTTPS em uma etapa
   update-online imagem:versao atualiza imagem Docker Hub sem conflito de porta
   update           consulta atualizacao assinada
   backup [pasta]   salva volume e ambiente
