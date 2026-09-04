@@ -12,7 +12,7 @@ cd /var/www
 git clone --depth 1 https://github.com/alexmenin/bchat-whitelabel-installer.git bchat-whitelabel-installer
 cd bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.3 3388
 ```
 
 Se o repositorio ja estiver clonado, execute somente:
@@ -20,7 +20,7 @@ Se o repositorio ja estiver clonado, execute somente:
 ```bash
 cd /var/www/bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.3 3388
 ```
 
 O comando faz o pull da imagem, cria os segredos locais, sobe os volumes
@@ -38,14 +38,14 @@ que o Docker tente publicar milhares de portas. Uma faixa personalizada no
 `.env` e preservada.
 
 ```bash
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.3 3388
 ```
 
 Se uma tentativa anterior ja criou o projeto, entre na pasta e execute:
 
 ```bash
 cd /var/www/bchat-whitelabel-installer
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.3 3388
 sudo docker compose ps
 sudo docker compose logs --tail=80 bchat
 ```
