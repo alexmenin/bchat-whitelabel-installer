@@ -12,7 +12,7 @@ cd /var/www
 git clone --depth 1 https://github.com/alexmenin/bchat-whitelabel-installer.git bchat-whitelabel-installer
 cd bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.5 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.6 3388
 ```
 
 Para atualizar uma instalacao existente sem disputar a porta, use:
@@ -26,12 +26,16 @@ sudo ./bchatctl update-online agilizesolucoes/bchat-whitelabel:1.1.5
 Esse comando troca somente o container BChat, preserva os volumes e aguarda o
 healthcheck interno. Em caso de falha, restaura o `.env` anterior.
 
+Se o configurador informar que a sessao expirou, execute `sudo ./bchatctl
+setup-code` e clique em `Validar codigo novamente` na tela. Isso nao exige
+apagar volumes nem reinstalar o sistema.
+
 Se o repositorio ja estiver clonado, execute somente:
 
 ```bash
 cd /var/www/bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.5 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.6 3388
 ```
 
 O comando faz o pull da imagem, cria os segredos locais, sobe os volumes
@@ -45,21 +49,21 @@ O instalador verifica se a porta escolhida esta livre antes de baixar a imagem
 ou subir o container. Se ela estiver ocupada, ele informa o processo e encerra
 sem alterar a instalacao. Para continuar, escolha outra porta:
 
-A versao `1.1.5` inclui a recuperacao automatica da sessao do configurador,
+A versao `1.1.6` inclui a recuperacao explicita da sessao do configurador,
 o binario FFmpeg exigido pelo backend e mantem a faixa RTP padrao em
 `10000-10100`, evitando
 que o Docker tente publicar milhares de portas. Uma faixa personalizada no
 `.env` e preservada.
 
 ```bash
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.5 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.6 3388
 ```
 
 Se uma tentativa anterior ja criou o projeto, entre na pasta e execute:
 
 ```bash
 cd /var/www/bchat-whitelabel-installer
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.5 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.6 3388
 sudo docker compose ps
 sudo docker compose logs --tail=80 bchat
 ```
