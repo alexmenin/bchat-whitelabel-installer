@@ -2,7 +2,7 @@ name: bchat-whitelabel
 
 services:
   bchat:
-    image: ${BCHAT_IMAGE:-bchat-appliance:1.1.0}
+    image: ${BCHAT_IMAGE:-bchat-appliance:1.1.4}
     restart: unless-stopped
     env_file:
       - .env
@@ -12,7 +12,7 @@ services:
       BCHAT_DATA_ROOT: /var/lib/bchat
       SETUP_PORT: 9010
       BCHAT_LICENSE_SERVER: ${BCHAT_LICENSE_SERVER:?Configure BCHAT_LICENSE_SERVER}
-      BCHAT_VERSION: ${BCHAT_VERSION:-1.1.0}
+      BCHAT_VERSION: ${BCHAT_VERSION:-1.1.4}
       BCHAT_UPDATE_CHANNEL: ${BCHAT_UPDATE_CHANNEL:-stable}
       LICENSE_OFFLINE_GRACE_SECONDS: ${LICENSE_OFFLINE_GRACE_SECONDS:-604800}
       LICENSE_PUBLIC_KEY_PATH: /opt/bchat/keys/lease-public.pem

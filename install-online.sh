@@ -11,7 +11,7 @@ command -v openssl >/dev/null 2>&1 || { echo "OpenSSL nao encontrado." >&2; exit
 command -v curl >/dev/null 2>&1 || { echo "Curl nao encontrado." >&2; exit 1; }
 command -v ss >/dev/null 2>&1 || command -v lsof >/dev/null 2>&1 || { echo "ss ou lsof nao encontrado." >&2; exit 1; }
 
-IMAGE="${1:?Informe a imagem Docker Hub, por exemplo usuario/bchat-whitelabel:1.1.0}"
+IMAGE="${1:?Informe a imagem Docker Hub, por exemplo usuario/bchat-whitelabel:1.1.4}"
 PORT="${2:-8080}"
 [[ "$IMAGE" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]] || { echo "Imagem invalida." >&2; exit 1; }
 [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || { echo "Porta invalida." >&2; exit 1; }
@@ -60,6 +60,10 @@ replace_value BCHAT_IMAGE "$IMAGE"
 replace_value BCHAT_VERSION "${IMAGE##*:}"
 replace_value APP_BASE_URL "http://$SERVER_IP:$PORT"
 replace_value SIP_DOMAIN "$SERVER_IP"
+current_asterisk_ip="$(awk -F= '$1=="ASTERISK_PUBLIC_IP" {print substr($0,index($0,"=")+1)}' .env)"
+if [ -z "$current_asterisk_ip" ] || [ "$current_asterisk_ip" = "CHANGE_TO_SERVER_PUBLIC_IP" ]; then
+  replace_value ASTERISK_PUBLIC_IP "$SERVER_IP"
+fi
 replace_value BCHAT_GATEWAY_PORT "$PORT"
 replace_value BCHAT_BIND_ADDRESS "0.0.0.0"
 current_rtp_end="$(awk -F= '$1=="ASTERISK_RTP_END" {print substr($0,index($0,"=")+1)}' .env)"
