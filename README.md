@@ -12,7 +12,7 @@ cd /var/www
 git clone --depth 1 https://github.com/alexmenin/bchat-whitelabel-installer.git bchat-whitelabel-installer
 cd bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 8888
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
 ```
 
 Se o repositorio ja estiver clonado, execute somente:
@@ -20,12 +20,12 @@ Se o repositorio ja estiver clonado, execute somente:
 ```bash
 cd /var/www/bchat-whitelabel-installer
 sudo chmod +x install-online.sh bchatctl
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 8888
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
 ```
 
 O comando faz o pull da imagem, cria os segredos locais, sobe os volumes
-persistentes e deixa o configurador em `http://IP_DO_SERVIDOR:8080/__bchat`.
-O segundo argumento e somente a porta publica escolhida, neste exemplo `8888`.
+persistentes e deixa o configurador em `http://IP_DO_SERVIDOR:3388/__bchat`.
+O segundo argumento e somente a porta publica escolhida, neste exemplo `3388`.
 O dominio e definido
 depois, dentro do configurador visual.
 
@@ -34,14 +34,14 @@ ou subir o container. Se ela estiver ocupada, ele informa o processo e encerra
 sem alterar a instalacao. Para continuar, escolha outra porta:
 
 ```bash
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
 ```
 
 Se uma tentativa anterior ja criou o projeto, entre na pasta e execute:
 
 ```bash
 cd /var/www/bchat-whitelabel-installer
-sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.1 3388
+sudo ./install-online.sh agilizesolucoes/bchat-whitelabel:1.1.2 3388
 sudo docker compose ps
 sudo docker compose logs --tail=80 bchat
 ```

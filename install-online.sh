@@ -57,6 +57,7 @@ replace_value() {
 }
 
 replace_value BCHAT_IMAGE "$IMAGE"
+replace_value BCHAT_VERSION "${IMAGE##*:}"
 replace_value APP_BASE_URL "http://$SERVER_IP:$PORT"
 replace_value SIP_DOMAIN "$SERVER_IP"
 replace_value BCHAT_GATEWAY_PORT "$PORT"
